@@ -39,49 +39,59 @@ def count_fequency(df):
 
 # In[48]:
 
-def save_user_info_into_database(tag_df):
-    if (os.path.exists('../../data/database') is not True):
-        os.mkdir('../../data/database')
-    files = os.listdir('../../data/database')
+def save_user_info_into_database(tag_df, database_dir):
+    if (os.path.exists(database_dir) is not True):
+        os.mkdir(database_dir)
+    files = os.listdir(database_dir)
 
     cur_user_info = pd.DataFrame([tag_df.iloc[0].tolist()[2:]], columns=tag_df.columns[2:].values.tolist(), index=[0])
     cur_user_info['start_time'] = pd.Series([tag_df.TimeStamp.min()])
     cur_user_info['end_time'] = pd.Series([tag_df.TimeStamp.max() + pd.Timedelta('9 seconds')])
     if 'tester_info.csv' not in files:
-        cur_user_info.to_csv("../../data/database/tester_info.csv")
+        cur_user_info.to_csv(os.path.join(database_dir, "tester_info.csv"))
         return int(0)
     else:
-        all_tester_info = pd.DataFrame.from_csv('../../data/database/tester_info.csv')
+        all_tester_info = pd.DataFrame.from_csv(os.path.join(database_dir, "tester_info.csv"))
         all_tester_info = all_tester_info.append(cur_user_info, ignore_index = True)
-        all_tester_info.to_csv('../../data/database/tester_info.csv')
+        all_tester_info.to_csv(os.path.join(database_dir, "tester_info.csv"))
         return int(all_tester_info.index.max())
 
 
 # In[63]:
 
-def save_sensor_data_into_database(sensor_df):
+def save_sensor_data_into_database(sensor_df, database_dir):
     cur_sensor_df = sensor_df[~sensor_df.TagName.isnull()]
-    if (os.path.exists('../../data/database') is not True):
-        os.mkdir('../../data/database')
-    files = os.listdir('../../data/database')
+    if (os.path.exists(database_dir) is not True):
+        os.mkdir(database_dir)
+    files = os.listdir(database_dir)
     if 'sensor_data.csv' not in files:
-        cur_sensor_df.to_csv('../../data/database/sensor_data.csv')
+        cur_sensor_df.to_csv(os.path.join(database_dir, 'sensor_data.csv'))
     else:
-        all_sensor_df = pd.DataFrame.from_csv('../../data/database/sensor_data.csv')
+        all_sensor_df = pd.DataFrame.from_csv(os.path.join(database_dir, 'sensor_data.csv'))
         all_sensor_df = all_sensor_df.append(cur_sensor_df, ignore_index = True)
-        all_sensor_df.to_csv('../../data/database/sensor_data.csv')
+        all_sensor_df.to_csv(os.path.join(database_dir, 'sensor_data.csv'))
 
 
 # In[49]:
 
 def main():
-    sensor_data = pd.read_csv("../../data/raw_data/SENSORDATA1510554844726.txt", skiprows=13, skipinitialspace= True)
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--sensor_data_dir', type=str, help='sensor data directory')
+    parser.add_argument('--tag_data_dir', type=str, help='tag data directory')
+    parser.add_argument('--database_dir', type=str, default='../../data/database/', help='database directory')
+
+    args = parser.parse_args()
+    process(args)
+
+
+def process(args):
+    sensor_data = pd.read_csv(args.sensor_data_dir, skiprows=13, skipinitialspace= True)
     count_fequency(sensor_data)
     sensor_data.TIMESTAMP = pd.DataFrame(index = pd.to_datetime(sensor_data.TIMESTAMP, unit='ms', utc = 'True')).tz_localize('utc').tz_convert('Asia/Singapore').index
-    tag_data = pd.read_csv('../../data/raw_data/Tags_20171113-143637.txt', skipinitialspace= True)
+    tag_data = pd.read_csv(args.tag_data_dir, skipinitialspace= True)
     tag_data.TimeStamp = pd.DataFrame(index = pd.to_datetime(tag_data.TimeStamp, utc = 'True')).tz_localize('Asia/Singapore').index
     
-        user_groups = list(set(tag_data['Tester_Name'].values.tolist()))
+    user_groups = list(set(tag_data['Tester_Name'].values.tolist()))
 
     for user in user_groups:
         cur_user_tag_df = tag_data[tag_data['Tester_Name'] == user]
@@ -92,7 +102,7 @@ def main():
             logging.error("There are more than 1 wear_start tags! User: " + str(user))
             sys.exit()
 
-        cur_user_id = save_user_info_into_database(cur_user_tag_df)
+        cur_user_id = save_user_info_into_database(cur_user_tag_df, args.database_dir)
 
         time_different_between_wear_phone =             cur_user_tag_df.iloc[0].TimeStamp - sensor_data.TIMESTAMP.min()
         sensor_data.TIMESTAMP = sensor_data.TIMESTAMP + time_different_between_wear_phone
@@ -113,7 +123,7 @@ def main():
             sensor_data.loc[(sensor_data.TIMESTAMP < cur_tag_end_time) & (sensor_data.TIMESTAMP > cur_tag_start_time), 'TagName'] = cur_tag
             sensor_data.loc[(sensor_data.TIMESTAMP < cur_tag_end_time) & (sensor_data.TIMESTAMP > cur_tag_start_time), 'tester_id'] = cur_user_id
 
-    save_sensor_data_into_database(sensor_data)
+    save_sensor_data_into_database(sensor_data, args.database_dir)
 
 
 # In[50]:
