@@ -1,0 +1,13 @@
+# General
+.DS_Store
+.AppleDouble
+.LSOverride
+
+*.idea
+
+paper/*
+
+data/decrepted_data/*
+data/raw_data/*
+
+*checkpoint.ipynb
