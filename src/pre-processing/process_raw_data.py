@@ -86,6 +86,9 @@ def main():
 
 def process(args):
     sensor_data = pd.read_csv(args.sensor_data_dir, skiprows=13, skipinitialspace= True)
+    if (len(sensor_data) < 90000):
+        print("Incorrect sensor data length: " + str(sensor_data_dir))
+        return
     count_fequency(sensor_data)
     sensor_data.TIMESTAMP = pd.DataFrame(index = pd.to_datetime(sensor_data.TIMESTAMP, unit='ms', utc = 'True')).tz_localize('utc').tz_convert('Asia/Singapore').index
     tag_data = pd.read_csv(args.tag_data_dir, skipinitialspace= True)
@@ -120,6 +123,9 @@ def process(args):
                     cur_tag_end_time = cur_user_tag_df.iloc[i+1].TimeStamp
             else:
                 cur_tag_end_time = cur_tag_start_time + pd.Timedelta('5 seconds')
+            if (len(sensor_data.loc[(sensor_data.TIMESTAMP < cur_tag_end_time) & (sensor_data.TIMESTAMP > cur_tag_start_time), :]) < 500):
+                print("Incorrect number of samples for tag: " + str(cur_tag))
+                return
             sensor_data.loc[(sensor_data.TIMESTAMP < cur_tag_end_time) & (sensor_data.TIMESTAMP > cur_tag_start_time), 'TagName'] = cur_tag
             sensor_data.loc[(sensor_data.TIMESTAMP < cur_tag_end_time) & (sensor_data.TIMESTAMP > cur_tag_start_time), 'tester_id'] = cur_user_id
 
