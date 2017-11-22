@@ -21,7 +21,7 @@ import argparse
 # In[2]:
 
 useful_sensor = [1, 2, 3, 4, 11, 26, 17, 9, 10]
-
+min_samples = 1000
 
 # In[3]:
 
@@ -71,6 +71,39 @@ def save_sensor_data_into_database(sensor_df, database_dir):
         all_sensor_df = all_sensor_df.append(cur_sensor_df, ignore_index = True)
         all_sensor_df.to_csv(os.path.join(database_dir, 'sensor_data.csv'))
 
+def read_tag_data(dir):
+    tag_data = pd.read_csv(dir, skipinitialspace= True)
+    tag_data.TimeStamp = pd.DataFrame(index = pd.to_datetime(tag_data.TimeStamp, utc = 'True')).tz_localize('Asia/Singapore').index
+    return tag_data
+
+def read_sensor_data(dir):
+    sensor_data = pd.read_csv(dir, skiprows=13, skipinitialspace= True, )
+    count_fequency(sensor_data)
+    sensor_data.TIMESTAMP = pd.DataFrame(index = pd.to_datetime(sensor_data.TIMESTAMP, unit='ms', utc = 'True')).tz_localize('utc').tz_convert('Asia/Singapore').index
+    return sensor_data
+
+def time_difference(sensor_data, tag_data):
+    sensor_time_calibration = sensor_data[sensor_data.SENSORTYPE == -1]
+    tag_time_calibration = tag_data[tag_data.TagName == 'TIME_CALIBRATION']
+    if len(sensor_time_calibration) != len(tag_time_calibration):
+        print('The number of times of time calibration on watch and phone is different!')
+        return None
+    return np.mean(tag_time_calibration.TimeStamp - sensor_time_calibration.TIMESTAMP)
+
+
+def consecutive_repeated_tag(tags):
+    previous_tag = "None"
+    previous_index = -99
+    res = []
+    for i in range(len(tags)):
+        if tags[i] in ['ACTION_FINISH', 'TIME_CALIBRATION', 'wear_start']:
+            continue
+        if (previous_tag == tags[i]):
+            res.append(previous_index)
+        previous_tag = tags[i]
+        previous_index = i
+    return res
+
 
 # In[49]:
 
@@ -85,51 +118,49 @@ def main():
 
 
 def process(args):
-    sensor_data = pd.read_csv(args.sensor_data_dir, skiprows=13, skipinitialspace= True)
-    if (len(sensor_data) < 90000):
-        print("Incorrect sensor data length: " + str(sensor_data_dir))
-        return
-    count_fequency(sensor_data)
-    sensor_data.TIMESTAMP = pd.DataFrame(index = pd.to_datetime(sensor_data.TIMESTAMP, unit='ms', utc = 'True')).tz_localize('utc').tz_convert('Asia/Singapore').index
-    tag_data = pd.read_csv(args.tag_data_dir, skipinitialspace= True)
-    tag_data.TimeStamp = pd.DataFrame(index = pd.to_datetime(tag_data.TimeStamp, utc = 'True')).tz_localize('Asia/Singapore').index
-    
+    sensor_data = read_sensor_data(args.sensor_data_dir)
+    tag_data = read_tag_data(args.tag_data_dir)
     user_groups = list(set(tag_data['Tester_Name'].values.tolist()))
 
     for user in user_groups:
         cur_user_tag_df = tag_data[tag_data['Tester_Name'] == user]
-        if (cur_user_tag_df.iloc[0]['TagName'] != 'wear_start'):
-            logging.error("Cannot find wear_start tag! User: " + str(user))
-            sys.exit()
-        if (len(cur_user_tag_df[cur_user_tag_df['TagName'] == 'wear_start']) > 1):
-            logging.error("There are more than 1 wear_start tags! User: " + str(user))
-            sys.exit()
+#         if (cur_user_tag_df.iloc[0]['TagName'] != 'wear_start'):
+#             logging.error("Cannot find wear_start tag! User: " + str(user))
+#             sys.exit()
+#         if (len(cur_user_tag_df[cur_user_tag_df['TagName'] == 'wear_start']) > 1):
+#             logging.error("There are more than 1 wear_start tags! User: " + str(user))
+#             sys.exit()
 
-        cur_user_id = save_user_info_into_database(cur_user_tag_df, args.database_dir)
+        cur_user_id = save_user_info_into_database(cur_user_tag_df)
 
-        time_different_between_wear_phone =             cur_user_tag_df.iloc[0].TimeStamp - sensor_data.TIMESTAMP.min()
+        time_different_between_wear_phone = time_difference(sensor_data, tag_data)
+        if time_different_between_wear_phone is None:
+            return
         sensor_data.TIMESTAMP = sensor_data.TIMESTAMP + time_different_between_wear_phone
 
         tags = cur_user_tag_df.TagName.tolist()
+        skip_tag_idx = consecutive_repeated_tag(tags)
+        
         for i in range(len(tags)): 
-            if i == 0:
-                continue  # skip the first tag as the first tag is always 'wear_start'
+            if i in skip_tag_idx:
+                continue
             cur_tag = tags[i]
-            if cur_tag == 'ACTION_FINISH':
+            if cur_tag in ['ACTION_FINISH', 'TIME_CALIBRATION', 'wear_start']:
                 continue 
-            cur_tag_start_time = cur_user_tag_df.iloc[i].TimeStamp + pd.Timedelta('4 seconds')
-            if (i + 1 < len(tags)):
-                if (tags[i + 1] == 'ACTION_FINISH'):
-                    cur_tag_end_time = cur_user_tag_df.iloc[i+1].TimeStamp
+            cur_tag_start_time = (cur_user_tag_df.iloc[i].TimeStamp + pd.Timedelta('4 seconds'))
+            if ((i + 1 < len(tags)) and (tags[i + 1] == 'ACTION_FINISH')):
+                    cur_tag_end_time = (cur_user_tag_df.iloc[i+1].TimeStamp)
             else:
-                cur_tag_end_time = cur_tag_start_time + pd.Timedelta('5 seconds')
-            if (len(sensor_data.loc[(sensor_data.TIMESTAMP < cur_tag_end_time) & (sensor_data.TIMESTAMP > cur_tag_start_time), :]) < 500):
-                print("Incorrect number of samples for tag: " + str(cur_tag))
-                return
+                cur_tag_end_time = (cur_tag_start_time + pd.Timedelta('5 seconds'))
+
+            if (len(sensor_data.loc[(sensor_data.TIMESTAMP < cur_tag_end_time) & (sensor_data.TIMESTAMP > cur_tag_start_time)]) < 1000):
+                print("Something wrong with tag " + cur_tag + " for user " + str(user) + " id " + str(cur_user_id))
+                print("Number of samples is %d Less than threshold %d" % (len(sensor_data.loc[(sensor_data.TIMESTAMP < cur_tag_end_time) & (sensor_data.TIMESTAMP > cur_tag_start_time)]), min_samples))
+                continue
             sensor_data.loc[(sensor_data.TIMESTAMP < cur_tag_end_time) & (sensor_data.TIMESTAMP > cur_tag_start_time), 'TagName'] = cur_tag
             sensor_data.loc[(sensor_data.TIMESTAMP < cur_tag_end_time) & (sensor_data.TIMESTAMP > cur_tag_start_time), 'tester_id'] = cur_user_id
 
-    save_sensor_data_into_database(sensor_data, args.database_dir)
+    save_sensor_data_into_database(sensor_data)
 
 
 # In[50]:
