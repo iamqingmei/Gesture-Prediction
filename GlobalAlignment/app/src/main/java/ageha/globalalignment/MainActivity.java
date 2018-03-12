@@ -27,6 +27,21 @@ public class MainActivity extends WearableActivity {
     @Override
     protected void onStart() {
         super.onStart();
+
+//        float[] R = new float[16], I = new float[16], earthAcc = new float[16];
+//        float[] gravity_values = {-7.2522955f,0.09083997f,6.6004815f};
+//
+//        float[] mag_values = {8.723001f,	-6.4965f,	-51.6365f};
+//        float[] deviceRelativeAcceleration = {0.4782939000000001f,-0.038179886f,-0.24776077f,0.0f};
+//
+//
+//        SensorManager.getRotationMatrix(R, I, gravity_values, mag_values);
+//
+//        float[] inv = new float[16];
+//        android.opengl.Matrix.invertM(inv, 0, R, 0);
+//        android.opengl.Matrix.multiplyMV(earthAcc, 0, inv, 0, deviceRelativeAcceleration, 0);
+//
+//        Log.d("test", earthAcc[0] + ", " + earthAcc[1] + ", " + earthAcc[2] + "\n");
         InputStreamReader is = null;
         try {
             is = new InputStreamReader(getAssets().open("linear_acceleration_grav_mag.csv"));
@@ -51,7 +66,7 @@ public class MainActivity extends WearableActivity {
 
                 float[] R = new float[16], I = new float[16], earthAcc = new float[16];
                 float[] gravity_values = new float[]{Float.parseFloat(features[8]), Float.parseFloat(features[9]), Float.parseFloat(features[10])};
-                float[] mag_values = new float[]{Float.parseFloat(features[12]), Float.parseFloat(features[11]), Float.parseFloat(features[13])};
+                float[] mag_values = new float[]{Float.parseFloat(features[11]), Float.parseFloat(features[12]), Float.parseFloat(features[13])};
                 float[] deviceRelativeAcceleration = new float[]{Float.parseFloat(features[4]), Float.parseFloat(features[5]), Float.parseFloat(features[6]),Float.parseFloat(features[7])};
 
                 SensorManager.getRotationMatrix(R, I, gravity_values, mag_values);
@@ -64,7 +79,7 @@ public class MainActivity extends WearableActivity {
                 res.append(earthAcc[0] + ", " + earthAcc[1] + ", " + earthAcc[2] + "\n");
                 c++;
 
-                if (c%5000 == 0){
+                if (c%50000 == 0){
                     write_to_file(res, "result" + String.valueOf(c) + ".csv");
                     res = new StringBuilder();
                     Log.d("writde","result" + String.valueOf(c) + ".csv");
