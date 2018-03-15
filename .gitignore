@@ -15,3 +15,4 @@ data/raw_data/*
 *.pdf
 *.docx
 *.png
+*.pyc
