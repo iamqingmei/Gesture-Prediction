@@ -16,3 +16,5 @@ data/raw_data/*
 *.docx
 *.png
 *.pyc
+*.json
+*.hdf5
