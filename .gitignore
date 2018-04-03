@@ -18,3 +18,4 @@ data/raw_data/*
 *.pyc
 *.json
 *.hdf5
+screenshot/example_gesutre4.jpg
