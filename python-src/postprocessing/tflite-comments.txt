@@ -1,0 +1,14 @@
+tensorboard --logdir=./cnn_tf_log/   
+
+// convert keras model to tensor flow frozen model
+python ../../keras_to_tensorflow-master/keras_to_tensorflow.py -input_model_file ./tmp/model.h5
+
+// convert tensorflow frozen model to tf-lite model
+bazel run \
+//tensorflow/contrib/lite/toco:toco -- \
+--input_file=/tmp/model_frozen.pb \
+--output_file=/tmp/foo.tflite \
+--inference_type=FLOAT \
+ --input_shape=1,14,2 \ 
+--input_array=input_1 \
+--output_array=output_node0
