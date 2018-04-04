@@ -12,3 +12,12 @@ bazel run \
  --input_shape=1,14,2 \ 
 --input_array=input_1 \
 --output_array=output_node0
+
+bazel run \
+//tensorflow/contrib/lite/toco:toco -- \
+--input_file=/tmp/model_frozen.pb \
+--output_file=/tmp/foo.tflite \
+--inference_type=FLOAT \
+ --input_shape=830,14,2 \ 
+--input_array=input_1 \
+--output_array=output_node0
