@@ -19,3 +19,7 @@ data/raw_data/*
 *.json
 *.hdf5
 screenshot/example_gesutre4.jpg
+video/
+fyp repot/
+screenshot/
+graphs/
