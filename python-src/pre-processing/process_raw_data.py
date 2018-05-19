@@ -82,13 +82,30 @@ def read_sensor_data(dir):
     sensor_data.TIMESTAMP = pd.DataFrame(index = pd.to_datetime(sensor_data.TIMESTAMP, unit='ms', utc = 'True')).tz_localize('utc').tz_convert('Asia/Singapore').index
     return sensor_data
 
+
 def time_difference(sensor_data, tag_data):
     sensor_time_calibration = sensor_data[sensor_data.SENSORTYPE == -1]
     tag_time_calibration = tag_data[tag_data.TagName == 'TIME_CALIBRATION']
     if len(sensor_time_calibration) != len(tag_time_calibration):
         print('The number of times of time calibration on watch and phone is different!')
         return None
-    return np.mean(tag_time_calibration.TimeStamp - sensor_time_calibration.TIMESTAMP)
+    if len(sensor_time_calibration) != 3:
+        print('Time Calibration is not 3 times!')
+        return None
+    TP1 = tag_time_calibration.TimeStamp[0]
+    TP2 = tag_time_calibration.TimeStamp[1]
+    TP3 = tag_time_calibration.TimeStamp[2]
+    TW1 = sensor_time_calibration.TimeStamp[0]
+    TW2 = sensor_time_calibration.TimeStamp[1]
+    TW3 = sensor_time_calibration.TimeStamp[2]
+    dif_watch_12 = TW2 - TW1
+    dif_phone_12 = TP2 - TP1
+    dif_watch_23 = TW3 - TW2
+    dif_phone_23 = TP3 - TP2
+    if ( abs( dif_watch_12 - dif_phone_12 ) < 0.1) :
+        if ( abs( dif_watch_23 - dif_phone_23 ) < 0.1) :
+            return np.mean(tag_time_calibration.TimeStamp - sensor_time_calibration.TIMESTAMP)
+    return None
 
 
 def consecutive_repeated_tag(tags):
@@ -163,12 +180,6 @@ def process(args):
     save_sensor_data_into_database(sensor_data)
 
 
-# In[50]:
-
-
-
-
-# In[ ]:
 
 if __name__ == '__main__':
     main()

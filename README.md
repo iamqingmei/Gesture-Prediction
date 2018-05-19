@@ -1,53 +1,38 @@
 
-# Dytechlab Data Project
+# Watch-Based Hand Activity Recognition
 
-dytechlab_data_project.py contains all the functions.
+python-src folder contains all the codes.
 
-SGX publishes derivative data daily at the address below. \n
-http://www.sgx.com/wps/portal/sgxweb/home/marketinfo/historical_data/derivatives/ \n
-This programcould download the following files daily from the above website. \n
-1)WEBPXTICK_DT-*.zip 2) TickData_structure.dat 3) TC_*.txt 4) TC_structure.dat \n
-By default, it would automatically download the files which are available on
-current website.
+## pre-processing
 
-## Getting Started
+### process_raw_data.py
+sync the raw data which is recorded by the phone and watch
 
-These instructions will get you a copy of the project up and running on your local machine for development and testing purposes. See deployment for notes on how to deploy the project on a live system.
+### ProprocessingGlobalAcc.ipynb
+All the preprocessing:
+ Load the linear acceleration in earth's coordination system (The convention from device's coordinate system to Earth's coordinate system is done by android App. The android App is written by myself
+ Correct velocity drift
+ Calculate displacenemnt from the starting point to the finishing point
+ combine x&y axis
 
-### Prerequisites
+### Plot.ipynb
+some analysis and ploting
 
-urllib 
+### user_independent_split.py
+User independently split the data collected into training and testing dataset
 
-if you dont have urllib library, you can install it through the following command in terminal.
+## train
 
-```
-pip install urllib
-```
+### 0-6 BinaryModel.ipynb
+Evaluate, training and Save the binary model
+The trained binary model will be saved as binary_model.pkl
 
-### Arguments
-
-Entering the following command for more details
-
-```
-Python dytechlab_data_project.py -h 
-```
-
-On non-martket days, it would not have any data. 
-
-if the -date argument is specified as a non-market day, it would provide the warning:
-
-```
-01-30 16:37 root         WARNING  28 Jan 2018 is not a market day. Data would not be downloaded.
-```
-
-### Remarks
-
-On the SGX website, only the data of the past 5 market days are available for free download. I could not be abe to download the historical data before the past 5 market days through this program.
+### final.py
+Train the SVC, RF, CNN, DNN as the main model 
+Get the overall results which is the result obtained by the whole system
+The whole regocnition system combines the result of the main model and binary model.
 
 
 
-### Recovery Plan
 
-If the 
-I have some ideas about recovery plan but I have not enought time to implement it.
 
